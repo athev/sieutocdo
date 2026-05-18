@@ -1,0 +1,187 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>SieuTocDo – Nhập liệu ảnh → Google Sheets</title>
+  <meta name="description" content="Công cụ nhập liệu tự động từ ảnh vào Google Sheets bằng AI." />
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet" />
+  <link rel="stylesheet" href="style.css" />
+</head>
+<body>
+
+  <!-- BG Blobs -->
+  <div class="bg-blob blob1"></div>
+  <div class="bg-blob blob2"></div>
+  <div class="bg-blob blob3"></div>
+
+  <!-- ══════════════════════════════════════════════
+       TRANG ĐĂNG NHẬP
+  ══════════════════════════════════════════════ -->
+  <div id="page-login" class="page-login">
+    <div class="login-card">
+      <div class="login-logo">
+        <div class="logo-icon">⚡</div>
+        <div>
+          <div class="logo-text">SieuTocDo</div>
+          <div class="logo-sub">Nhập liệu ảnh bằng AI</div>
+        </div>
+      </div>
+
+      <form id="form-login" class="login-form" novalidate>
+        <div class="field-group">
+          <label for="inp-username">Tên đăng nhập</label>
+          <input id="inp-username" type="text" placeholder="username" autocomplete="username" required />
+        </div>
+        <div class="field-group">
+          <label for="inp-password">Mật khẩu</label>
+          <div class="input-with-action">
+            <input id="inp-password" type="password" placeholder="••••••••" autocomplete="current-password" required />
+            <button type="button" class="btn-toggle-vis" data-target="inp-password">👁</button>
+          </div>
+        </div>
+        <div id="login-error" class="login-error hidden"></div>
+        <button id="btn-login" type="submit" class="btn btn-primary btn-full btn-large">
+          <span id="login-text">Đăng nhập</span>
+          <div id="login-spinner" class="spinner hidden"></div>
+        </button>
+      </form>
+      <p class="login-footer">Powered by Gemini AI + Google Sheets</p>
+    </div>
+  </div>
+
+  <!-- ══════════════════════════════════════════════
+       APP CHÍNH
+  ══════════════════════════════════════════════ -->
+  <div id="page-app" class="hidden">
+
+    <!-- Header -->
+    <header class="header">
+      <div class="header-inner">
+        <div class="logo">
+          <div class="logo-icon">⚡</div>
+          <span class="logo-text">SieuTocDo</span>
+          <span class="logo-badge">AI</span>
+        </div>
+        <div class="header-right">
+          <div class="user-chip">
+            <span class="user-avatar">👤</span>
+            <span id="display-username"></span>
+          </div>
+          <button id="btn-logout" class="btn btn-ghost btn-sm" title="Đăng xuất">Đăng xuất</button>
+        </div>
+      </div>
+    </header>
+
+    <main class="main">
+
+      <!-- STEP 1: UPLOAD -->
+      <section id="section-upload" class="section active">
+        <div class="section-title">
+          <div class="step-badge">1</div>
+          <h2>Tải ảnh lên</h2>
+        </div>
+
+        <div id="drop-zone" class="drop-zone">
+          <input type="file" id="file-input" accept="image/*" hidden />
+          <div class="drop-icon">📷</div>
+          <p class="drop-text">Kéo thả ảnh vào đây</p>
+          <p class="drop-sub">hoặc</p>
+          <button id="btn-pick" class="btn btn-primary">Chọn ảnh từ máy</button>
+          <p class="drop-hint">Hỗ trợ JPG, PNG, WEBP, GIF, BMP · Paste ảnh từ clipboard (Ctrl+V)</p>
+        </div>
+
+        <div id="preview-wrap" class="preview-wrap hidden">
+          <img id="preview-img" class="preview-img" alt="Ảnh đã chọn" />
+          <div class="preview-actions">
+            <button id="btn-analyze" class="btn btn-primary btn-large">
+              <span id="analyze-icon">🔍</span>
+              <span id="analyze-text">Phân tích ảnh</span>
+              <div id="analyze-spinner" class="spinner hidden"></div>
+            </button>
+            <button id="btn-reupload" class="btn btn-ghost">Đổi ảnh</button>
+          </div>
+        </div>
+      </section>
+
+      <!-- STEP 2: RESULTS -->
+      <section id="section-results" class="section hidden">
+        <div class="section-title">
+          <div class="step-badge">2</div>
+          <h2>Kết quả phân tích</h2>
+          <span id="field-count" class="field-count"></span>
+        </div>
+
+        <div class="split-view">
+          <div class="split-image">
+            <img id="result-img" class="split-img" alt="Ảnh phân tích" />
+          </div>
+          <div class="split-fields">
+            <div class="fields-header">
+              <p class="fields-note">✏️ Nhấp vào ô để chỉnh sửa trước khi gửi</p>
+              <button id="btn-add-field" class="btn btn-sm btn-ghost">+ Thêm trường</button>
+            </div>
+            <div id="fields-container" class="fields-container"></div>
+          </div>
+        </div>
+
+        <!-- Sheet Picker -->
+        <div class="sheet-picker">
+          <div class="sheet-picker-header">
+            <span class="sheet-picker-icon">📋</span>
+            <span class="sheet-picker-title">Chọn Google Sheet đích</span>
+            <button id="btn-toggle-picker" class="btn btn-sm btn-ghost">▼ Mở rộng</button>
+          </div>
+          <div id="sheet-picker-body" class="sheet-picker-body">
+            <div class="sheet-picker-row">
+              <div class="field-group" style="flex:1">
+                <label for="inp-sheet-url">URL hoặc Sheet ID</label>
+                <input
+                  id="inp-sheet-url"
+                  type="text"
+                  placeholder="Dán link Google Sheet hoặc ID vào đây..."
+                  autocomplete="off"
+                />
+              </div>
+              <div class="field-group" style="width:160px">
+                <label for="inp-sheet-tab">Tên Tab</label>
+                <input
+                  id="inp-sheet-tab"
+                  type="text"
+                  placeholder="Sheet1"
+                  autocomplete="off"
+                />
+              </div>
+            </div>
+            <div class="sheet-picker-hint">
+              💡 Sheet phải được chia sẻ <strong>"Anyone with the link – Editor"</strong>.
+              Để trống để dùng Sheet mặc định của hệ thống.
+            </div>
+            <div id="sheet-preview" class="sheet-preview hidden"></div>
+          </div>
+        </div>
+
+        <div class="result-actions">
+          <button id="btn-send-sheet" class="btn btn-success btn-large">
+            <span id="send-icon">📊</span>
+            <span id="send-text">Ghi vào Google Sheets</span>
+            <div id="send-spinner" class="spinner hidden"></div>
+          </button>
+          <button id="btn-reset" class="btn btn-ghost">Phân tích ảnh mới</button>
+        </div>
+      </section>
+
+    </main>
+  </div>
+
+  <!-- TOAST -->
+  <div id="toast" class="toast hidden">
+    <span id="toast-icon">✅</span>
+    <span id="toast-msg"></span>
+  </div>
+
+  <script src="app.js"></script>
+</body>
+</html>

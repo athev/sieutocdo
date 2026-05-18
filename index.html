@@ -1,0 +1,216 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>SieuTocDo – Nhập liệu ảnh → Google Sheets</title>
+  <meta name="description" content="Tự động phân tích ảnh và nhập liệu vào Google Sheets cực nhanh bằng AI." />
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet" />
+  <link rel="stylesheet" href="style.css" />
+</head>
+<body>
+  <!-- Background blobs -->
+  <div class="bg-blob blob1"></div>
+  <div class="bg-blob blob2"></div>
+  <div class="bg-blob blob3"></div>
+
+  <!-- Header -->
+  <header class="header">
+    <div class="header-inner">
+      <div class="logo">
+        <div class="logo-icon">⚡</div>
+        <span class="logo-text">SieuTocDo</span>
+        <span class="logo-badge">AI</span>
+      </div>
+      <button id="btn-settings" class="btn-icon" title="Cài đặt API">
+        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="3"/><path d="M19.07 4.93a10 10 0 0 1 0 14.14M4.93 4.93a10 10 0 0 0 0 14.14"/><path d="M12 2v2M12 20v2M2 12h2M20 12h2"/></svg>
+      </button>
+    </div>
+  </header>
+
+  <main class="main">
+
+    <!-- === STEP 1: UPLOAD === -->
+    <section id="section-upload" class="section active">
+      <div class="section-title">
+        <div class="step-badge">1</div>
+        <h2>Tải ảnh lên</h2>
+      </div>
+
+      <div id="drop-zone" class="drop-zone">
+        <input type="file" id="file-input" accept="image/*" hidden />
+        <div class="drop-icon">📷</div>
+        <p class="drop-text">Kéo thả ảnh vào đây</p>
+        <p class="drop-sub">hoặc</p>
+        <button id="btn-pick" class="btn btn-primary">Chọn ảnh từ máy</button>
+        <p class="drop-hint">Hỗ trợ JPG, PNG, WEBP, GIF, BMP</p>
+      </div>
+
+      <!-- Preview -->
+      <div id="preview-wrap" class="preview-wrap hidden">
+        <img id="preview-img" class="preview-img" alt="Ảnh đã chọn" />
+        <div class="preview-actions">
+          <button id="btn-analyze" class="btn btn-primary btn-large">
+            <span id="analyze-icon">🔍</span>
+            <span id="analyze-text">Phân tích ảnh</span>
+            <div id="analyze-spinner" class="spinner hidden"></div>
+          </button>
+          <button id="btn-reupload" class="btn btn-ghost">Đổi ảnh</button>
+        </div>
+      </div>
+    </section>
+
+    <!-- === STEP 2: RESULTS === -->
+    <section id="section-results" class="section hidden">
+      <div class="section-title">
+        <div class="step-badge">2</div>
+        <h2>Kết quả phân tích</h2>
+        <span id="field-count" class="field-count"></span>
+      </div>
+
+      <!-- Split view -->
+      <div class="split-view">
+        <div class="split-image">
+          <img id="result-img" class="split-img" alt="Ảnh phân tích" />
+        </div>
+        <div class="split-fields">
+          <div class="fields-header">
+            <p class="fields-note">✏️ Nhấp vào ô để chỉnh sửa trước khi gửi</p>
+            <button id="btn-add-field" class="btn btn-sm btn-ghost">+ Thêm trường</button>
+          </div>
+          <div id="fields-container" class="fields-container"></div>
+        </div>
+      </div>
+
+      <div class="result-actions">
+        <button id="btn-send-sheet" class="btn btn-success btn-large">
+          <span id="send-icon">📊</span>
+          <span id="send-text">Ghi vào Google Sheets</span>
+          <div id="send-spinner" class="spinner hidden"></div>
+        </button>
+        <button id="btn-reset" class="btn btn-ghost">Phân tích ảnh mới</button>
+      </div>
+    </section>
+
+    <!-- === SUCCESS TOAST === -->
+    <div id="toast" class="toast hidden">
+      <span id="toast-icon">✅</span>
+      <span id="toast-msg">Thành công!</span>
+    </div>
+
+  </main>
+
+  <!-- === SETTINGS MODAL === -->
+  <div id="modal-settings" class="modal-overlay hidden">
+    <div class="modal">
+      <div class="modal-header">
+        <h3>⚙️ Cài đặt kết nối</h3>
+        <button id="btn-close-modal" class="btn-icon">✕</button>
+      </div>
+      <div class="modal-body">
+
+        <div class="field-group">
+          <label for="cfg-gemini-key">🤖 Gemini API Key</label>
+          <div class="input-with-action">
+            <input type="password" id="cfg-gemini-key" placeholder="AIza..." autocomplete="off" />
+            <button class="btn-toggle-vis" data-target="cfg-gemini-key" title="Hiện/Ẩn">👁</button>
+          </div>
+          <small>Lấy tại <a href="https://aistudio.google.com/app/apikey" target="_blank">Google AI Studio</a></small>
+        </div>
+
+        <div class="field-group">
+          <label for="cfg-sheet-id">📋 Google Sheet ID</label>
+          <input type="text" id="cfg-sheet-id" placeholder="1BxiMVs0XRA5nFMdKvBdBZjgmUUqptlbs74OgVE2upms" />
+          <small>Lấy từ URL của Sheets: …/d/<strong>ID</strong>/edit</small>
+        </div>
+
+        <div class="field-group">
+          <label for="cfg-sheet-name">📄 Tên trang tính (Tab)</label>
+          <input type="text" id="cfg-sheet-name" placeholder="Sheet1" />
+        </div>
+
+        <div class="field-group">
+          <label for="cfg-sheets-key">🔑 Google Sheets API Key</label>
+          <div class="input-with-action">
+            <input type="password" id="cfg-sheets-key" placeholder="AIza..." autocomplete="off" />
+            <button class="btn-toggle-vis" data-target="cfg-sheets-key" title="Hiện/Ẩn">👁</button>
+          </div>
+          <small>Cần bật <strong>Google Sheets API</strong> trong <a href="https://console.cloud.google.com" target="_blank">Google Cloud Console</a>. <a href="#" id="guide-link">Xem hướng dẫn ▸</a></small>
+        </div>
+
+        <div id="oauth-section">
+          <div class="divider">hoặc dùng OAuth (khuyên dùng)</div>
+          <div class="field-group">
+            <label for="cfg-client-id">🔐 OAuth Client ID</label>
+            <input type="text" id="cfg-client-id" placeholder="xxxx.apps.googleusercontent.com" />
+          </div>
+          <button id="btn-oauth-login" class="btn btn-outline btn-full">🔓 Đăng nhập với Google</button>
+          <div id="oauth-status" class="oauth-status"></div>
+        </div>
+
+        <div class="field-group">
+          <label for="cfg-prompt">🧠 Prompt phân tích (tùy chỉnh)</label>
+          <textarea id="cfg-prompt" rows="4" placeholder="Phân tích toàn bộ thông tin trong ảnh và trả về JSON..."></textarea>
+        </div>
+
+      </div>
+      <div class="modal-footer">
+        <button id="btn-save-settings" class="btn btn-primary btn-full">💾 Lưu cài đặt</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Guide Modal -->
+  <div id="modal-guide" class="modal-overlay hidden">
+    <div class="modal modal-guide">
+      <div class="modal-header">
+        <h3>📖 Hướng dẫn cài đặt</h3>
+        <button id="btn-close-guide" class="btn-icon">✕</button>
+      </div>
+      <div class="modal-body guide-body">
+        <div class="guide-step">
+          <div class="guide-num">1</div>
+          <div>
+            <strong>Lấy Gemini API Key</strong><br/>
+            Truy cập <a href="https://aistudio.google.com/app/apikey" target="_blank">aistudio.google.com</a> → Tạo API key mới → Copy và dán vào ô Gemini API Key.
+          </div>
+        </div>
+        <div class="guide-step">
+          <div class="guide-num">2</div>
+          <div>
+            <strong>Bật Google Sheets API</strong><br/>
+            Vào <a href="https://console.cloud.google.com" target="_blank">console.cloud.google.com</a> → APIs & Services → Enable APIs → tìm "Google Sheets API" → Enable.
+          </div>
+        </div>
+        <div class="guide-step">
+          <div class="guide-num">3</div>
+          <div>
+            <strong>Tạo Credentials</strong><br/>
+            <em>Cách đơn giản (API Key):</em> APIs & Services → Credentials → Create Credentials → API Key.<br/>
+            <em>Cách bảo mật hơn (OAuth):</em> Create Credentials → OAuth 2.0 Client ID → Web application → Thêm <code>http://localhost</code> và URL hiện tại vào Authorized origins.
+          </div>
+        </div>
+        <div class="guide-step">
+          <div class="guide-num">4</div>
+          <div>
+            <strong>Lấy Sheet ID</strong><br/>
+            Mở Google Sheets → Nhìn URL: <code>https://docs.google.com/spreadsheets/d/<strong>[SHEET_ID]</strong>/edit</code> → Copy phần in đậm.
+          </div>
+        </div>
+        <div class="guide-step">
+          <div class="guide-num">5</div>
+          <div>
+            <strong>Cấp quyền cho Sheet</strong><br/>
+            Nếu dùng API Key: Mở Sheet → Share → Anyone with the link → Editor.<br/>
+            Nếu dùng OAuth: Đăng nhập Google là đủ.
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <script src="app.js"></script>
+</body>
+</html>
