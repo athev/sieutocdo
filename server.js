@@ -59,6 +59,8 @@ function authMiddleware(req, res, next) {
 app.post('/api/login', (req, res) => {
   const { username, password } = req.body;
   const users = parseUsers();
+  
+  console.log(`[login] Thử đăng nhập: username="${username}", password="${password}"`);
 
   if (!username || !password) {
     return res.status(400).json({ error: 'Vui lòng nhập đầy đủ thông tin' });
