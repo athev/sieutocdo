@@ -23,7 +23,6 @@
   <div id="page-login" class="page-login">
     <div class="login-card">
       <div class="login-logo">
-        <div class="logo-icon">⚡</div>
         <div>
           <div class="logo-text">SieuTocDo</div>
           <div class="logo-sub">Nhập liệu ảnh bằng AI</div>
@@ -39,7 +38,7 @@
           <label for="inp-password">Mật khẩu</label>
           <div class="input-with-action">
             <input id="inp-password" type="password" placeholder="••••••••" autocomplete="current-password" required />
-            <button type="button" class="btn-toggle-vis" data-target="inp-password">👁</button>
+            <button type="button" class="btn-toggle-vis" style="font-size: 0.8rem; font-weight: 600;" data-target="inp-password">Hiện</button>
           </div>
         </div>
         <div id="login-error" class="login-error hidden"></div>
@@ -61,16 +60,14 @@
     <header class="header">
       <div class="header-inner">
         <div class="logo">
-          <div class="logo-icon">⚡</div>
           <span class="logo-text">SieuTocDo</span>
           <span class="logo-badge">AI</span>
         </div>
         <div class="header-right">
           <div class="user-chip">
-            <span class="user-avatar">👤</span>
             <span id="display-username"></span>
           </div>
-          <button id="btn-configure-ai" class="btn btn-ghost btn-sm" style="margin-right: 8px;" title="Cài đặt AI & Cột">⚙️ Cài đặt AI</button>
+          <button id="btn-configure-ai" class="btn btn-ghost btn-sm" style="margin-right: 8px;" title="Cài đặt AI & Cột">Cài đặt AI</button>
           <button id="btn-logout" class="btn btn-ghost btn-sm" title="Đăng xuất">Đăng xuất</button>
         </div>
       </div>
@@ -87,7 +84,7 @@
 
         <div id="drop-zone" class="drop-zone">
           <input type="file" id="file-input" accept="image/*" hidden />
-          <div class="drop-icon">📷</div>
+          <!-- no icon -->
           <p class="drop-text">Kéo thả ảnh vào đây</p>
           <p class="drop-sub">hoặc</p>
           <button id="btn-pick" class="btn btn-primary">Chọn ảnh từ máy</button>
@@ -98,7 +95,7 @@
           <img id="preview-img" class="preview-img" alt="Ảnh đã chọn" />
           <div class="preview-actions">
             <button id="btn-analyze" class="btn btn-primary btn-large">
-              <span id="analyze-icon">🔍</span>
+              <!-- no icon -->
               <span id="analyze-text">Phân tích ảnh</span>
               <div id="analyze-spinner" class="spinner hidden"></div>
             </button>
@@ -131,9 +128,8 @@
         <!-- Sheet Picker -->
         <div class="sheet-picker">
           <div class="sheet-picker-header">
-            <span class="sheet-picker-icon">📋</span>
             <span class="sheet-picker-title">Chọn Google Sheet đích</span>
-            <button id="btn-toggle-picker" class="btn btn-sm btn-ghost">▼ Mở rộng</button>
+            <button id="btn-toggle-picker" class="btn btn-sm btn-ghost">Mở rộng</button>
           </div>
           <div id="sheet-picker-body" class="sheet-picker-body">
             <div class="sheet-picker-row">
@@ -157,7 +153,7 @@
               </div>
             </div>
             <div class="sheet-picker-hint">
-              💡 Sheet phải được chia sẻ <strong>"Anyone with the link – Editor"</strong>.
+              Sheet phải được chia sẻ <strong>"Anyone with the link – Editor"</strong>.
               Để trống để dùng Sheet mặc định của hệ thống.
             </div>
             <div id="sheet-preview" class="sheet-preview hidden"></div>
@@ -166,7 +162,7 @@
 
         <div class="result-actions">
           <button id="btn-send-sheet" class="btn btn-success btn-large">
-            <span id="send-icon">📊</span>
+            <!-- no icon -->
             <span id="send-text">Ghi vào Google Sheets</span>
             <div id="send-spinner" class="spinner hidden"></div>
           </button>
@@ -177,9 +173,7 @@
     </main>
   </div>
 
-  <!-- TOAST -->
   <div id="toast" class="toast hidden">
-    <span id="toast-icon">✅</span>
     <span id="toast-msg"></span>
   </div>
 
@@ -201,7 +195,7 @@
 
       <!-- STEP 1: WELCOME -->
       <div id="onboarding-step-1" class="onboarding-step active">
-        <div class="ob-icon">⚡</div>
+        <!-- no icon -->
         <h2 class="ob-title">Chào mừng đến với SieuTocDo!</h2>
         <p class="ob-desc">
           Công cụ đột phá giúp bạn tự động hóa quy trình nhập liệu từ hình ảnh (hóa đơn, biên lai, báo giá...) vào Google Sheets chỉ trong vài giây bằng công nghệ Gemini AI siêu trí tuệ.
@@ -210,13 +204,13 @@
           Hãy thực hiện thiết lập cực kỳ nhanh để hệ thống bắt đầu làm việc tự động giúp bạn nhé!
         </p>
         <div class="ob-actions">
-          <button id="btn-ob-start" class="btn btn-primary btn-full btn-large">Bắt đầu thiết lập ngay 🚀</button>
+          <button id="btn-ob-start" class="btn btn-primary btn-full btn-large">Bắt đầu thiết lập ngay</button>
         </div>
       </div>
 
       <!-- STEP 2: CONNECT SHEET -->
       <div id="onboarding-step-2" class="onboarding-step hidden">
-        <h2 class="ob-title">🔗 Kết nối Google Sheet</h2>
+        <h2 class="ob-title">Kết nối Google Sheet</h2>
         <p class="ob-desc">
           Dán link trang tính Google Sheets mà bạn muốn ghi dữ liệu tự động vào.
         </p>
@@ -232,18 +226,18 @@
         </div>
 
         <div class="ob-sheet-hint">
-          ⚠️ <strong>Chú ý:</strong> Vui lòng nhấn nút <strong>Chia sẻ (Share)</strong> trên Google Sheet, chọn <strong>"Anyone with the link"</strong> làm <strong>Editor (Người chỉnh sửa)</strong> để AI có quyền ghi dữ liệu nhé!
+          <strong>Chú ý:</strong> Vui lòng nhấn nút <strong>Chia sẻ (Share)</strong> trên Google Sheet, chọn <strong>"Anyone with the link"</strong> làm <strong>Editor (Người chỉnh sửa)</strong> để AI có quyền ghi dữ liệu nhé!
         </div>
 
         <div class="ob-actions-row">
           <button id="btn-ob-back-1" class="btn btn-ghost">Quay lại</button>
-          <button id="btn-ob-next-2" class="btn btn-primary">Tiếp theo ➡️</button>
+          <button id="btn-ob-next-2" class="btn btn-primary">Tiếp theo</button>
         </div>
       </div>
 
       <!-- STEP 3: DEFINE FIELDS -->
       <div id="onboarding-step-3" class="onboarding-step hidden">
-        <h2 class="ob-title">🏷️ Định nghĩa các Cột dữ liệu</h2>
+        <h2 class="ob-title">Định nghĩa các Cột dữ liệu</h2>
         <p class="ob-desc">
           Bạn muốn trích xuất những thông tin gì từ ảnh? AI sẽ chỉ tập trung quét đúng những cột này để bảng tính của bạn cực kỳ gọn gàng.
         </p>
@@ -259,7 +253,7 @@
 
         <!-- Suggestion Pills Grouped by Use Case -->
         <div class="suggestion-section">
-          <p class="suggestion-title">💡 Gợi ý nhanh (Bấm để thêm cột):</p>
+          <p class="suggestion-title">Gợi ý nhanh (Bấm để thêm cột):</p>
           <div class="suggestion-categories">
             <div class="sug-cat">
               <span class="sug-cat-label">Bán hàng / Hóa đơn:</span>
@@ -293,7 +287,7 @@
 
         <div class="ob-actions-row">
           <button id="btn-ob-back-2" class="btn btn-ghost">Quay lại</button>
-          <button id="btn-ob-finish" class="btn btn-success">Hoàn tất & Khởi tạo Sheet 🎉</button>
+          <button id="btn-ob-finish" class="btn btn-success">Hoàn tất & Khởi tạo Sheet</button>
         </div>
       </div>
     </div>

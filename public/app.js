@@ -222,7 +222,7 @@ function bindSheetPicker() {
 
   function togglePicker() {
     const collapsed = body.classList.toggle('collapsed');
-    toggleBtn.textContent = collapsed ? '▶ Mở rộng' : '▼ Thu gọn';
+    toggleBtn.textContent = collapsed ? 'Mở rộng' : 'Thu gọn';
   }
 
   // Live parse khi gõ URL
@@ -449,7 +449,7 @@ function showResults() {
   const pickerBody = $('sheet-picker-body');
   if (pickerBody) pickerBody.classList.remove('collapsed');
   const toggleBtn = $('btn-toggle-picker');
-  if (toggleBtn) toggleBtn.textContent = '▼ Thu gọn';
+  if (toggleBtn) toggleBtn.textContent = 'Thu gọn';
 }
 
 function renderFields() {
@@ -529,7 +529,6 @@ function setSending(on) {
 let toastTimer = null;
 function showToast(msg, type = 'success') {
   const toast = $('toast');
-  $('toast-icon').textContent = type === 'success' ? '✅' : '❌';
   $('toast-msg').textContent = msg;
   toast.className = `toast ${type} show`;
   clearTimeout(toastTimer);
@@ -684,7 +683,7 @@ function bindObEventsOnce() {
     const btn = $('btn-ob-finish');
     const oldText = btn.innerHTML;
     btn.disabled = true;
-    btn.innerHTML = 'Đang khởi tạo Google Sheet... ⏳';
+    btn.innerHTML = 'Đang khởi tạo Google Sheet...';
     
     const sheetUrl = $('ob-sheet-url').value.trim();
     const sheetTab = $('ob-sheet-tab').value.trim() || 'Sheet1';
