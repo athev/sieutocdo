@@ -134,8 +134,8 @@ app.post('/api/sheets/write', authMiddleware, async (req, res) => {
   if (!fields || !fields.length) {
     return res.status(400).json({ error: 'Không có dữ liệu để ghi' });
   }
-  if (!SHEETS_KEY) {
-    return res.status(500).json({ error: 'Server chưa cấu hình Sheets API Key' });
+  if (!googleCreds) {
+    return res.status(500).json({ error: 'Server chưa cấu hình Google Credentials (google-credentials.json)' });
   }
 
   // Ưu tiên sheetId từ client, fallback về .env
