@@ -191,6 +191,8 @@
         <div class="step-dot" data-step="2">2</div>
         <div class="step-line"></div>
         <div class="step-dot" data-step="3">3</div>
+        <div class="step-line"></div>
+        <div class="step-dot" data-step="4">4</div>
       </div>
 
       <!-- STEP 1: WELCOME -->
@@ -235,16 +237,43 @@
         </div>
       </div>
 
-      <!-- STEP 3: DEFINE FIELDS -->
+      <!-- STEP 3: SAMPLE UPLOAD -->
       <div id="onboarding-step-3" class="onboarding-step hidden">
-        <h2 class="ob-title">Định nghĩa các Cột dữ liệu</h2>
+        <h2 class="ob-title">Tải lên Ảnh mẫu đầu tiên</h2>
         <p class="ob-desc">
-          Bạn muốn trích xuất những thông tin gì từ ảnh? AI sẽ chỉ tập trung quét đúng những cột này để bảng tính của bạn cực kỳ gọn gàng.
+          Vui lòng tải lên bức ảnh mẫu đầu tiên (ví dụ: hóa đơn, biên nhận, phiếu giao hàng của bạn...). AI sẽ tự động phân tích và đề xuất các cột thông tin phù hợp nhất.
+        </p>
+
+        <div id="ob-drop-zone" class="drop-zone" style="padding: 24px;">
+          <input type="file" id="ob-file-input" accept="image/*" hidden />
+          <p class="drop-text" style="font-size: 0.95rem;">Kéo thả ảnh mẫu vào đây hoặc</p>
+          <button id="btn-ob-pick" type="button" class="btn btn-primary btn-sm" style="margin-top: 8px;">Chọn ảnh từ máy</button>
+        </div>
+
+        <div id="ob-preview-wrap" class="preview-wrap hidden" style="margin-top: 14px;">
+          <img id="ob-preview-img" class="preview-img" alt="Ảnh mẫu" style="max-height: 120px;" />
+          <div class="ob-analyze-status" style="margin-top: 12px; text-align: center;">
+            <div id="ob-analyze-spinner" class="spinner" style="margin: 0 auto 8px; border-top-color: var(--accent);"></div>
+            <p id="ob-analyze-text" style="font-size: 0.85rem; color: var(--text-secondary);">Đang tải ảnh...</p>
+          </div>
+        </div>
+
+        <div class="ob-actions-row">
+          <button id="btn-ob-back-2" class="btn btn-ghost">Quay lại</button>
+          <button id="btn-ob-next-3" class="btn btn-primary" disabled>Tiếp theo</button>
+        </div>
+      </div>
+
+      <!-- STEP 4: DEFINE & PIN COLUMNS -->
+      <div id="onboarding-step-4" class="onboarding-step hidden">
+        <h2 class="ob-title">Xác nhận & Cố định Cột</h2>
+        <p class="ob-desc">
+          Đây là danh sách các cột AI trích xuất được từ ảnh mẫu. Bạn có thể sửa đổi, xóa hoặc thêm mới. Hệ thống sẽ cố định các cột này cho mọi lượt quét ảnh sau.
         </p>
 
         <!-- Tag Input Area -->
         <div class="field-group">
-          <label>Các cột dữ liệu muốn lấy (Nhấn Enter hoặc dấu ✕ để xóa)</label>
+          <label>Các cột dữ liệu cố định (Nhấn Enter hoặc dấu ✕ để xóa)</label>
           <div id="ob-tag-container" class="tag-container">
             <!-- Tags will be dynamically loaded here -->
             <input id="ob-tag-input" type="text" placeholder="Gõ tên cột rồi ấn Enter..." />
@@ -253,7 +282,7 @@
 
         <!-- Suggestion Pills Grouped by Use Case -->
         <div class="suggestion-section">
-          <p class="suggestion-title">Gợi ý nhanh (Bấm để thêm cột):</p>
+          <p class="suggestion-title">Gợi ý thêm cột nhanh:</p>
           <div class="suggestion-categories">
             <div class="sug-cat">
               <span class="sug-cat-label">Bán hàng / Hóa đơn:</span>
@@ -286,10 +315,12 @@
         </div>
 
         <div class="ob-actions-row">
-          <button id="btn-ob-back-2" class="btn btn-ghost">Quay lại</button>
+          <button id="btn-ob-back-3" class="btn btn-ghost">Quay lại</button>
           <button id="btn-ob-finish" class="btn btn-success">Hoàn tất & Khởi tạo Sheet</button>
         </div>
       </div>
+    </div>
+  </div>
     </div>
   </div>
 

@@ -536,6 +536,7 @@ function showToast(msg, type = 'success') {
 }
 
 // ============================================================
+// ============================================================
 // ─── ONBOARDING CONTROLLERS ─────────────────────────────────
 // ============================================================
 let obTags = [];
@@ -569,13 +570,17 @@ function openOnboarding(forced = false) {
   try {
     obTags = JSON.parse(localStorage.getItem('std_fields_to_extract') || '[]');
   } catch (e) {
-    obTags = ['Thời gian', 'Tên khách hàng', 'Số điện thoại', 'Tổng tiền']; // Mặc định
+    obTags = [];
   }
-  if (!obTags || obTags.length === 0) {
-    obTags = ['Thời gian', 'Tên khách hàng', 'Số điện thoại', 'Tổng tiền'];
-  }
+  if (!obTags) obTags = [];
   
   renderObTags();
+  
+  // Reset trạng thái upload mẫu ảnh
+  $('ob-drop-zone').classList.remove('hidden');
+  $('ob-preview-wrap').classList.add('hidden');
+  $('btn-ob-next-3').disabled = true;
+  $('ob-file-input').value = '';
   
   // Reset về Step 1
   setObStep(1);
@@ -598,12 +603,105 @@ function setObStep(stepNum) {
   const lines = document.querySelectorAll('.onboarding-stepper .step-line');
   if (lines[0]) lines[0].classList.toggle('active', stepNum > 1);
   if (lines[1]) lines[1].classList.toggle('active', stepNum > 2);
+  if (lines[2]) lines[2].classList.toggle('active', stepNum > 3);
   
   // Hiển thị step tương ứng
   document.querySelectorAll('.onboarding-step').forEach(step => {
     step.classList.add('hidden');
   });
   $(`onboarding-step-${stepNum}`).classList.remove('hidden');
+}
+
+// Xử lý file ảnh mẫu ở Step 3 Onboarding
+function handleObFile(file) {
+  if (!file || !file.type.startsWith('image/')) return;
+  
+  $('ob-drop-zone').classList.add('hidden');
+  $('ob-preview-wrap').classList.remove('hidden');
+  $('ob-analyze-spinner').classList.remove('hidden');
+  $('ob-analyze-text').textContent = 'Đang nén ảnh mẫu...';
+  $('btn-ob-next-3').disabled = true;
+
+  const reader = new FileReader();
+  reader.onload = e => {
+    const img = new Image();
+    img.onload = async () => {
+      const MAX_WIDTH = 1600;
+      const MAX_HEIGHT = 1600;
+      let width = img.width;
+      let height = img.height;
+
+      if (width > height) {
+        if (width > MAX_WIDTH) {
+          height = Math.round((height * MAX_WIDTH) / width);
+          width = MAX_WIDTH;
+        }
+      } else {
+        if (height > MAX_HEIGHT) {
+          width = Math.round((width * MAX_HEIGHT) / height);
+          height = MAX_HEIGHT;
+        }
+      }
+
+      const canvas = document.createElement('canvas');
+      canvas.width = width;
+      canvas.height = height;
+      const ctx = canvas.getContext('2d');
+      ctx.drawImage(img, 0, 0, width, height);
+
+      const compressedDataUrl = canvas.toDataURL('image/jpeg', 0.8);
+      $('ob-preview-img').src = compressedDataUrl;
+      
+      // Bắt đầu tự động phân tích mẫu ảnh tìm cột bằng AI
+      analyzeObImage(compressedDataUrl.split(',')[1]);
+    };
+    img.src = e.target.result;
+  };
+  reader.readAsDataURL(file);
+}
+
+async function analyzeObImage(base64Data) {
+  $('ob-analyze-text').textContent = 'AI đang tự động tìm các cột thông tin từ ảnh mẫu...';
+  
+  try {
+    const res = await apiFetch('/api/analyze', {
+      method: 'POST',
+      body: JSON.stringify({ imageBase64: base64Data, mimeType: 'image/jpeg' }) // Auto phân tích
+    });
+
+    if (!res.ok) {
+      const err = await res.json().catch(() => ({}));
+      if (res.status === 401) { logout(); return; }
+      throw new Error(err.error || `HTTP ${res.status}`);
+    }
+
+    const data = await res.json();
+    if (!data.fields || data.fields.length === 0) {
+      throw new Error('AI không tự động tìm thấy cột nào. Hãy thử ảnh mẫu khác rõ ràng hơn!');
+    }
+
+    // Đọc các trường trích xuất được làm các cột cố định
+    obTags = data.fields.map(f => f.label.trim());
+    renderObTags();
+
+    $('ob-analyze-spinner').classList.add('hidden');
+    $('ob-analyze-text').textContent = `Đã trích xuất thành công ${obTags.length} cột! Bấm Tiếp theo để xác nhận.`;
+    $('btn-ob-next-3').disabled = false;
+    showToast('AI trích xuất cột thành công! 🎉');
+
+  } catch (err) {
+    console.error('Lỗi phân tích ảnh mẫu onboarding:', err);
+    $('ob-analyze-spinner').classList.add('hidden');
+    $('ob-analyze-text').textContent = `Lỗi: ${err.message}. Vui lòng nhấp để chọn lại.`;
+    showToast(err.message, 'error');
+    
+    // Reset về trạng thái upload
+    setTimeout(() => {
+      $('ob-preview-wrap').classList.add('hidden');
+      $('ob-drop-zone').classList.remove('hidden');
+      $('ob-file-input').value = '';
+    }, 3000);
+  }
 }
 
 let obEventsBound = false;
@@ -638,8 +736,38 @@ function bindObEventsOnce() {
     setObStep(3);
   });
   
-  // Step 3 Back & Finish
-  $('btn-ob-back-2').addEventListener('click', () => setObStep(2));
+  // Step 3 Back & Next
+  $('btn-ob-back-2').addEventListener('click', () => {
+    setObStep(2);
+  });
+  $('btn-ob-next-3').addEventListener('click', () => {
+    setObStep(4);
+  });
+  
+  // Step 3 Upload mẫu events
+  const obDropZone = $('ob-drop-zone');
+  const obFileInput = $('ob-file-input');
+  
+  $('btn-ob-pick').addEventListener('click', () => obFileInput.click());
+  obFileInput.addEventListener('change', e => {
+    if (e.target.files?.[0]) handleObFile(e.target.files[0]);
+  });
+  
+  obDropZone.addEventListener('dragover', e => {
+    e.preventDefault();
+    obDropZone.classList.add('dragover');
+  });
+  obDropZone.addEventListener('dragleave', () => {
+    obDropZone.classList.remove('dragover');
+  });
+  obDropZone.addEventListener('drop', e => {
+    e.preventDefault();
+    obDropZone.classList.remove('dragover');
+    if (e.dataTransfer.files?.[0]) handleObFile(e.dataTransfer.files[0]);
+  });
+  
+  // Step 4 Back & Finish
+  $('btn-ob-back-3').addEventListener('click', () => setObStep(3));
   
   // Nút đóng modal tự nguyện
   $('btn-ob-close').addEventListener('click', () => {
