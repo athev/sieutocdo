@@ -269,31 +269,53 @@ Chỉ trả về JSON, không có text nào khác.`;
 }
 
 function parseFields(text) {
+  let cleaned = text.trim();
+  
+  // 1. Dọn dẹp markdown code block nếu có
+  cleaned = cleaned.replace(/^```json\s*/i, '').replace(/```\s*$/, '').trim();
+
+  // 2. Thử parse trực tiếp
   try {
-    const trimmed = text.trim();
-    const parsed = JSON.parse(trimmed);
+    const parsed = JSON.parse(cleaned);
     if (Array.isArray(parsed)) return normalizeFields(parsed);
   } catch (_) {}
 
-  const match = text.match(/\[\s*\{[\s\S]*?\}\s*\]/);
+  // 3. Tìm mảng JSON dùng regex
+  const match = cleaned.match(/\[\s*\{[\s\S]*?\}\s*\]/);
   if (match) {
     try {
-      const parsed = JSON.parse(match[0]);
+      // Dọn dẹp dấu phẩy thừa ở cuối các phần tử JSON (trailing commas) để tránh lỗi parse
+      let jsonStr = match[0].replace(/,(\s*[\]}])/g, '$1');
+      const parsed = JSON.parse(jsonStr);
       if (Array.isArray(parsed)) return normalizeFields(parsed);
     } catch (_) {}
   }
 
-  // Fallback: key: value lines
-  return text.split('\n')
-    .filter(l => l.includes(':'))
-    .map(l => {
-      const idx = l.indexOf(':');
-      return {
-        label: l.slice(0, idx).trim().replace(/^["'*\-•\d.]+/, '').trim(),
-        value: l.slice(idx + 1).trim().replace(/^["']|["']$/g, '')
-      };
-    })
-    .filter(f => f.label && f.value);
+  // 4. Nếu có cấu trúc JSON nhưng bị lỗi cú pháp nhẹ, thử dùng regex để trích xuất cặp "label": "..." và "value": "..."
+  const fields = [];
+  const itemRegex = /\{\s*"label"\s*:\s*"([^"]+)"\s*,\s*"value"\s*:\s*"([^"]*)"\s*\}/gi;
+  let m;
+  while ((m = itemRegex.exec(cleaned)) !== null) {
+    fields.push({ label: m[1].trim(), value: m[2].trim() });
+  }
+
+  if (fields.length > 0) return fields;
+
+  // 5. Fallback: Parse từng dòng dạng "Key: Value" (Chỉ dùng khi không có cấu trúc JSON)
+  if (!cleaned.includes('{') && !cleaned.includes('[')) {
+    return cleaned.split('\n')
+      .filter(l => l.includes(':'))
+      .map(l => {
+        const idx = l.indexOf(':');
+        return {
+          label: l.slice(0, idx).trim().replace(/^["'*\-•\d.]+/, '').trim(),
+          value: l.slice(idx + 1).trim().replace(/^["']|["']$/g, '')
+        };
+      })
+      .filter(f => f.label && f.value);
+  }
+
+  return [];
 }
 
 function normalizeFields(arr) {
