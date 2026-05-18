@@ -665,10 +665,27 @@ function handleObFile(file) {
 async function analyzeObImage(base64Data) {
   $('ob-analyze-text').textContent = 'AI đang tự động tìm các cột thông tin từ ảnh mẫu...';
   
+  const customPrompt = `Bạn là trợ lý phân tích ảnh chuyên nghiệp. 
+Bức ảnh này là ảnh mẫu để thiết lập các cột dữ liệu cố định cho hệ thống nhập liệu Google Sheets.
+Hãy trích xuất danh sách các TIÊU ĐỀ CỘT DỮ LIỆU ĐỘC NHẤT (Unique Column Headers / Field Names) xuất hiện trong ảnh (ví dụ: Tên chiến dịch, Người tiếp cận, Lượt hiển thị, Số tiền, Thời gian, Tên khách hàng...).
+
+CHÚ Ý QUAN TRỌNG:
+1. Chỉ trả về danh sách các TÊN TIÊU ĐỀ CỘT ĐỘC NHẤT (ví dụ: "Tên chiến dịch", không phải "Tên chiến dịch 1", "Tên chiến dịch 2"). KHÔNG trích xuất dữ liệu của từng dòng hay thêm số thứ tự ở sau!
+2. Trả về kết quả là một mảng JSON hợp lệ chứa các tên cột này, ví dụ:
+[
+  {"label": "Tên cột 1", "value": ""},
+  {"label": "Tên cột 2", "value": ""}
+]
+Chỉ trả về JSON, không thêm bất kỳ văn bản giải thích hay khối mã markdown nào. Tránh tự động thêm số thứ tự vào tên cột.`;
+
   try {
     const res = await apiFetch('/api/analyze', {
       method: 'POST',
-      body: JSON.stringify({ imageBase64: base64Data, mimeType: 'image/jpeg' }) // Auto phân tích
+      body: JSON.stringify({ 
+        imageBase64: base64Data, 
+        mimeType: 'image/jpeg',
+        customPrompt
+      })
     });
 
     if (!res.ok) {
