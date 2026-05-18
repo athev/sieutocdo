@@ -70,6 +70,7 @@
             <span class="user-avatar">👤</span>
             <span id="display-username"></span>
           </div>
+          <button id="btn-configure-ai" class="btn btn-ghost btn-sm" style="margin-right: 8px;" title="Cài đặt AI & Cột">⚙️ Cài đặt AI</button>
           <button id="btn-logout" class="btn btn-ghost btn-sm" title="Đăng xuất">Đăng xuất</button>
         </div>
       </div>
@@ -180,6 +181,122 @@
   <div id="toast" class="toast hidden">
     <span id="toast-icon">✅</span>
     <span id="toast-msg"></span>
+  </div>
+
+  <!-- ══════════════════════════════════════════════
+       ONBOARDING / CÀI ĐẶT HỆ THỐNG (MODAL)
+  ══════════════════════════════════════════════ -->
+  <div id="modal-onboarding" class="modal-overlay hidden">
+    <div class="onboarding-card">
+      <button id="btn-ob-close" class="onboarding-close-btn hidden" title="Đóng">✕</button>
+      
+      <!-- Header Stepper -->
+      <div class="onboarding-stepper">
+        <div class="step-dot active" data-step="1">1</div>
+        <div class="step-line"></div>
+        <div class="step-dot" data-step="2">2</div>
+        <div class="step-line"></div>
+        <div class="step-dot" data-step="3">3</div>
+      </div>
+
+      <!-- STEP 1: WELCOME -->
+      <div id="onboarding-step-1" class="onboarding-step active">
+        <div class="ob-icon">⚡</div>
+        <h2 class="ob-title">Chào mừng đến với SieuTocDo!</h2>
+        <p class="ob-desc">
+          Công cụ đột phá giúp bạn tự động hóa quy trình nhập liệu từ hình ảnh (hóa đơn, biên lai, báo giá...) vào Google Sheets chỉ trong vài giây bằng công nghệ Gemini AI siêu trí tuệ.
+        </p>
+        <p class="ob-sub-desc">
+          Hãy thực hiện thiết lập cực kỳ nhanh để hệ thống bắt đầu làm việc tự động giúp bạn nhé!
+        </p>
+        <div class="ob-actions">
+          <button id="btn-ob-start" class="btn btn-primary btn-full btn-large">Bắt đầu thiết lập ngay 🚀</button>
+        </div>
+      </div>
+
+      <!-- STEP 2: CONNECT SHEET -->
+      <div id="onboarding-step-2" class="onboarding-step hidden">
+        <h2 class="ob-title">🔗 Kết nối Google Sheet</h2>
+        <p class="ob-desc">
+          Dán link trang tính Google Sheets mà bạn muốn ghi dữ liệu tự động vào.
+        </p>
+        
+        <div class="field-group">
+          <label for="ob-sheet-url">Đường dẫn Google Sheet (hoặc ID)</label>
+          <input id="ob-sheet-url" type="text" placeholder="https://docs.google.com/spreadsheets/d/..." required />
+        </div>
+        
+        <div class="field-group">
+          <label for="ob-sheet-tab">Tên Trang tính (Tab Name)</label>
+          <input id="ob-sheet-tab" type="text" placeholder="Sheet1" value="Sheet1" required />
+        </div>
+
+        <div class="ob-sheet-hint">
+          ⚠️ <strong>Chú ý:</strong> Vui lòng nhấn nút <strong>Chia sẻ (Share)</strong> trên Google Sheet, chọn <strong>"Anyone with the link"</strong> làm <strong>Editor (Người chỉnh sửa)</strong> để AI có quyền ghi dữ liệu nhé!
+        </div>
+
+        <div class="ob-actions-row">
+          <button id="btn-ob-back-1" class="btn btn-ghost">Quay lại</button>
+          <button id="btn-ob-next-2" class="btn btn-primary">Tiếp theo ➡️</button>
+        </div>
+      </div>
+
+      <!-- STEP 3: DEFINE FIELDS -->
+      <div id="onboarding-step-3" class="onboarding-step hidden">
+        <h2 class="ob-title">🏷️ Định nghĩa các Cột dữ liệu</h2>
+        <p class="ob-desc">
+          Bạn muốn trích xuất những thông tin gì từ ảnh? AI sẽ chỉ tập trung quét đúng những cột này để bảng tính của bạn cực kỳ gọn gàng.
+        </p>
+
+        <!-- Tag Input Area -->
+        <div class="field-group">
+          <label>Các cột dữ liệu muốn lấy (Nhấn Enter hoặc dấu ✕ để xóa)</label>
+          <div id="ob-tag-container" class="tag-container">
+            <!-- Tags will be dynamically loaded here -->
+            <input id="ob-tag-input" type="text" placeholder="Gõ tên cột rồi ấn Enter..." />
+          </div>
+        </div>
+
+        <!-- Suggestion Pills Grouped by Use Case -->
+        <div class="suggestion-section">
+          <p class="suggestion-title">💡 Gợi ý nhanh (Bấm để thêm cột):</p>
+          <div class="suggestion-categories">
+            <div class="sug-cat">
+              <span class="sug-cat-label">Bán hàng / Hóa đơn:</span>
+              <div class="sug-pills">
+                <button type="button" class="sug-pill" data-val="Thời gian">Thời gian</button>
+                <button type="button" class="sug-pill" data-val="Tên khách hàng">Khách hàng</button>
+                <button type="button" class="sug-pill" data-val="Số điện thoại">Số điện thoại</button>
+                <button type="button" class="sug-pill" data-val="Tên sản phẩm">Sản phẩm</button>
+                <button type="button" class="sug-pill" data-val="Tổng tiền">Tổng tiền</button>
+                <button type="button" class="sug-pill" data-val="Phương thức thanh toán">Thanh toán</button>
+              </div>
+            </div>
+            <div class="sug-cat">
+              <span class="sug-cat-label">Giao hàng / Vận đơn:</span>
+              <div class="sug-pills">
+                <button type="button" class="sug-pill" data-val="Mã đơn hàng">Mã đơn hàng</button>
+                <button type="button" class="sug-pill" data-val="Địa chỉ giao">Địa chỉ giao</button>
+                <button type="button" class="sug-pill" data-val="Tiền COD">Tiền COD</button>
+              </div>
+            </div>
+            <div class="sug-cat">
+              <span class="sug-cat-label">Thông tin cá nhân:</span>
+              <div class="sug-pills">
+                <button type="button" class="sug-pill" data-val="Họ và tên">Họ tên</button>
+                <button type="button" class="sug-pill" data-val="Số CCCD">Số CCCD</button>
+                <button type="button" class="sug-pill" data-val="Ngày sinh">Ngày sinh</button>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <div class="ob-actions-row">
+          <button id="btn-ob-back-2" class="btn btn-ghost">Quay lại</button>
+          <button id="btn-ob-finish" class="btn btn-success">Hoàn tất & Khởi tạo Sheet 🎉</button>
+        </div>
+      </div>
+    </div>
   </div>
 
   <script src="app.js"></script>

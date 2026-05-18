@@ -120,6 +120,9 @@ function showApp() {
   $('page-app').classList.remove('hidden');
   $('display-username').textContent = STATE.username || '';
   bindAppEvents();
+  
+  // Kiểm tra onboarding sau khi đăng nhập thành công
+  setTimeout(checkOnboarding, 300);
 }
 
 function logout() {
@@ -178,6 +181,7 @@ function bindAppEvents() {
   $('btn-add-field').addEventListener('click', addEmptyField);
   $('btn-send-sheet').addEventListener('click', sendToSheets);
   $('btn-reset').addEventListener('click', resetToUpload);
+  $('btn-configure-ai').addEventListener('click', () => openOnboarding(false));
 
   // ── Sheet Picker ──────────────────────────────────────────
   bindSheetPicker();
@@ -321,9 +325,35 @@ async function analyzeImage() {
 
   setAnalyzing(true);
   try {
+    // Tự động xây dựng customPrompt nếu người dùng đã thiết lập các trường mong muốn
+    const savedFieldsRaw = localStorage.getItem('std_fields_to_extract');
+    let customPrompt = undefined;
+    if (savedFieldsRaw) {
+      try {
+        const savedFields = JSON.parse(savedFieldsRaw);
+        if (savedFields && savedFields.length > 0) {
+          customPrompt = `Bạn là trợ lý phân tích ảnh chuyên nghiệp. 
+Hãy trích xuất CHÍNH XÁC các trường thông tin sau đây từ ảnh này (nếu có):
+${savedFields.map(f => `- ${f}`).join('\n')}
+
+Trả về kết quả là một mảng JSON hợp lệ chứa các trường trên, ví dụ:
+[
+  {"label": "Tên trường", "value": "Giá trị trích xuất được"}
+]
+Chỉ trả về JSON, không thêm bất kỳ văn bản giải thích hay khối mã markdown nào. Tránh tự động tạo thêm các trường nằm ngoài danh sách yêu cầu trên. Nếu trường nào không có trong ảnh, hãy trả về giá trị trống "" thay vì bỏ qua trường đó.`;
+        }
+      } catch (e) {
+        console.error('Lỗi phân tích std_fields_to_extract:', e);
+      }
+    }
+
     const res = await apiFetch('/api/analyze', {
       method: 'POST',
-      body: JSON.stringify({ imageBase64: STATE.imageBase64, mimeType: STATE.imageMime })
+      body: JSON.stringify({ 
+        imageBase64: STATE.imageBase64, 
+        mimeType: STATE.imageMime,
+        customPrompt
+      })
     });
 
     if (!res.ok) {
@@ -504,4 +534,241 @@ function showToast(msg, type = 'success') {
   toast.className = `toast ${type} show`;
   clearTimeout(toastTimer);
   toastTimer = setTimeout(() => { toast.classList.remove('show'); }, 3500);
+}
+
+// ============================================================
+// ─── ONBOARDING CONTROLLERS ─────────────────────────────────
+// ============================================================
+let obTags = [];
+let isObForced = false;
+
+function checkOnboarding() {
+  const savedUrl = localStorage.getItem('std_sheet_url');
+  const savedFields = localStorage.getItem('std_fields_to_extract');
+  
+  if (!savedUrl || !savedFields) {
+    openOnboarding(true);
+  }
+}
+
+function openOnboarding(forced = false) {
+  isObForced = forced;
+  
+  // Hiển thị/ẩn nút đóng modal
+  const closeBtn = $('btn-ob-close');
+  if (forced) {
+    closeBtn.classList.add('hidden');
+  } else {
+    closeBtn.classList.remove('hidden');
+  }
+  
+  // Khôi phục các giá trị đã lưu
+  $('ob-sheet-url').value = localStorage.getItem('std_sheet_url') || '';
+  $('ob-sheet-tab').value = localStorage.getItem('std_sheet_tab') || 'Sheet1';
+  
+  // Phục hồi tags
+  try {
+    obTags = JSON.parse(localStorage.getItem('std_fields_to_extract') || '[]');
+  } catch (e) {
+    obTags = ['Thời gian', 'Tên khách hàng', 'Số điện thoại', 'Tổng tiền']; // Mặc định
+  }
+  if (!obTags || obTags.length === 0) {
+    obTags = ['Thời gian', 'Tên khách hàng', 'Số điện thoại', 'Tổng tiền'];
+  }
+  
+  renderObTags();
+  
+  // Reset về Step 1
+  setObStep(1);
+  
+  // Mở overlay
+  $('modal-onboarding').classList.remove('hidden');
+  bindObEventsOnce();
+}
+
+function setObStep(stepNum) {
+  // Trạng thái stepper dots
+  document.querySelectorAll('.onboarding-stepper .step-dot').forEach(dot => {
+    const dotStep = parseInt(dot.dataset.step);
+    dot.className = 'step-dot';
+    if (dotStep < stepNum) dot.classList.add('completed');
+    else if (dotStep === stepNum) dot.classList.add('active');
+  });
+  
+  // Trạng thái stepper lines
+  const lines = document.querySelectorAll('.onboarding-stepper .step-line');
+  if (lines[0]) lines[0].classList.toggle('active', stepNum > 1);
+  if (lines[1]) lines[1].classList.toggle('active', stepNum > 2);
+  
+  // Hiển thị step tương ứng
+  document.querySelectorAll('.onboarding-step').forEach(step => {
+    step.classList.add('hidden');
+  });
+  $(`onboarding-step-${stepNum}`).classList.remove('hidden');
+}
+
+let obEventsBound = false;
+function bindObEventsOnce() {
+  if (obEventsBound) return;
+  obEventsBound = true;
+  
+  // Step 1 -> Step 2
+  $('btn-ob-start').addEventListener('click', () => setObStep(2));
+  
+  // Step 2 Back & Next
+  $('btn-ob-back-1').addEventListener('click', () => setObStep(1));
+  $('btn-ob-next-2').addEventListener('click', () => {
+    const sheetUrl = $('ob-sheet-url').value.trim();
+    const sheetTab = $('ob-sheet-tab').value.trim() || 'Sheet1';
+    
+    if (!sheetUrl) {
+      showToast('Vui lòng nhập đường dẫn Google Sheet!', 'error');
+      return;
+    }
+    
+    const parsedId = parseSheetId(sheetUrl);
+    if (!parsedId) {
+      showToast('Đường dẫn Google Sheet không hợp lệ!', 'error');
+      return;
+    }
+    
+    // Lưu tạm thời vào STATE
+    STATE.sheetId = parsedId;
+    STATE.sheetTab = sheetTab;
+    
+    setObStep(3);
+  });
+  
+  // Step 3 Back & Finish
+  $('btn-ob-back-2').addEventListener('click', () => setObStep(2));
+  
+  // Nút đóng modal tự nguyện
+  $('btn-ob-close').addEventListener('click', () => {
+    $('modal-onboarding').classList.add('hidden');
+  });
+  
+  // Input tag mới
+  const tagInput = $('ob-tag-input');
+  tagInput.addEventListener('keydown', e => {
+    if (e.key === 'Enter') {
+      e.preventDefault();
+      const val = tagInput.value.trim();
+      if (val) {
+        if (!obTags.includes(val)) {
+          obTags.push(val);
+          renderObTags();
+        }
+        tagInput.value = '';
+      }
+    }
+  });
+  
+  // Thêm tag từ gợi ý
+  document.querySelectorAll('.sug-pill').forEach(pill => {
+    pill.addEventListener('click', () => {
+      const val = pill.dataset.val;
+      if (val && !obTags.includes(val)) {
+        obTags.push(val);
+        renderObTags();
+      }
+    });
+  });
+  
+  // Hoàn tất onboarding
+  $('btn-ob-finish').addEventListener('click', async () => {
+    if (obTags.length === 0) {
+      showToast('Vui lòng định nghĩa ít nhất 1 cột dữ liệu!', 'error');
+      return;
+    }
+    
+    const btn = $('btn-ob-finish');
+    const oldText = btn.innerHTML;
+    btn.disabled = true;
+    btn.innerHTML = 'Đang khởi tạo Google Sheet... ⏳';
+    
+    const sheetUrl = $('ob-sheet-url').value.trim();
+    const sheetTab = $('ob-sheet-tab').value.trim() || 'Sheet1';
+    const parsedId = parseSheetId(sheetUrl);
+    
+    try {
+      // 1. Lưu cài đặt
+      localStorage.setItem('std_sheet_url', sheetUrl);
+      localStorage.setItem('std_sheet_tab', sheetTab);
+      localStorage.setItem('std_fields_to_extract', JSON.stringify(obTags));
+      
+      // Đồng bộ vào trang chính
+      $('inp-sheet-url').value = sheetUrl;
+      $('inp-sheet-tab').value = sheetTab;
+      
+      // Kích hoạt preview ở cột chính
+      const event = new Event('input', { bubbles: true });
+      $('inp-sheet-url').dispatchEvent(event);
+      $('inp-sheet-tab').dispatchEvent(event);
+      
+      // 2. Tự động khởi tạo Sheet: Ghi các cột tiêu đề rỗng xuống dòng 1 của Sheet
+      const fieldsPayload = obTags.map(tag => ({ label: tag, value: '' }));
+      
+      const response = await apiFetch('/api/sheets/write', {
+        method: 'POST',
+        body: JSON.stringify({
+          sheetId: parsedId,
+          sheetTab: sheetTab,
+          fields: fieldsPayload
+        })
+      });
+      
+      if (!response.ok) {
+        const err = await response.json().catch(() => ({}));
+        throw new Error(err.error || `HTTP ${response.status}`);
+      }
+      
+      showToast('Đã lưu cấu hình và khởi tạo Google Sheet thành công! 🎉');
+      $('modal-onboarding').classList.add('hidden');
+      
+    } catch (err) {
+      console.error('Lỗi khởi tạo Google Sheet:', err);
+      // Vẫn cho phép hoàn tất onboarding vì cài đặt đã được lưu cục bộ
+      showToast('Lưu cấu hình thành công! (Không thể kết nối Sheet để tạo cột trước: Hãy kiểm tra quyền chia sẻ Editor)', 'warning');
+      $('modal-onboarding').classList.add('hidden');
+    } finally {
+      btn.disabled = false;
+      btn.innerHTML = oldText;
+    }
+  });
+}
+
+function renderObTags() {
+  const container = $('ob-tag-container');
+  const input = $('ob-tag-input');
+  
+  // Xóa các tag cũ (chỉ giữ lại thẻ input)
+  container.querySelectorAll('.tag-item').forEach(item => item.remove());
+  
+  obTags.forEach(tag => {
+    const item = document.createElement('span');
+    item.className = 'tag-item';
+    item.innerHTML = `
+      ${tag}
+      <span class="tag-close" data-tag="${tag}">✕</span>
+    `;
+    
+    // Gắn sự kiện xóa tag
+    item.querySelector('.tag-close').addEventListener('click', e => {
+      e.stopPropagation();
+      obTags = obTags.filter(t => t !== tag);
+      renderObTags();
+    });
+    
+    container.insertBefore(item, input);
+  });
+  
+  // Cập nhật trạng thái selected của suggestion pills
+  document.querySelectorAll('.sug-pill').forEach(pill => {
+    const val = pill.dataset.val;
+    if (obTags.includes(val)) {
+      pill.classList.add('selected');
+    } else {
+      pill.classList.remove('selected');
+    }
+  });
 }
