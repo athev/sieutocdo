@@ -332,15 +332,23 @@ async function analyzeImage() {
       try {
         const savedFields = JSON.parse(savedFieldsRaw);
         if (savedFields && savedFields.length > 0) {
-          customPrompt = `Bạn là trợ lý phân tích ảnh chuyên nghiệp. 
-Hãy trích xuất CHÍNH XÁC các trường thông tin sau đây từ ảnh này (nếu có):
+          customPrompt = `Bạn là trợ lý phân tích ảnh chuyên nghiệp chuyên trích xuất dữ liệu dạng bảng.
+Hãy trích xuất TOÀN BỘ các dòng dữ liệu xuất hiện trong bảng ở ảnh này.
+Đối với mỗi dòng, hãy trích xuất dữ liệu tương ứng với các cột sau:
 ${savedFields.map(f => `- ${f}`).join('\n')}
 
-Trả về kết quả là một mảng JSON hợp lệ chứa các trường trên, ví dụ:
+CHÚ Ý QUAN TRỌNG:
+1. Trích xuất TOÀN BỘ các dòng dữ liệu xuất hiện trong ảnh (ví dụ: tất cả các chiến dịch quảng cáo). KHÔNG gộp dòng, không bỏ sót dòng nào.
+2. Trả về kết quả là một mảng JSON các dòng, mỗi dòng là một đối tượng chứa các tiêu đề cột làm Key và giá trị trích xuất được làm Value. Ví dụ:
 [
-  {"label": "Tên trường", "value": "Giá trị trích xuất được"}
+  {
+    ${savedFields.map(f => `"${f}": "giá trị dòng 1"`).join(',\n    ')}
+  },
+  {
+    ${savedFields.map(f => `"${f}": "giá trị dòng 2"`).join(',\n    ')}
+  }
 ]
-Chỉ trả về JSON, không thêm bất kỳ văn bản giải thích hay khối mã markdown nào. Tránh tự động tạo thêm các trường nằm ngoài danh sách yêu cầu trên. Nếu trường nào không có trong ảnh, hãy trả về giá trị trống "" thay vì bỏ qua trường đó.`;
+3. Chỉ trả về JSON, không thêm bất kỳ văn bản giải thích hay khối mã markdown nào. Nếu trường nào không có dữ liệu trong dòng tương ứng, hãy để giá trị trống "" thay vì bỏ qua.`;
         }
       } catch (e) {
         console.error('Lỗi phân tích std_fields_to_extract:', e);
@@ -368,7 +376,20 @@ Chỉ trả về JSON, không thêm bất kỳ văn bản giải thích hay kh�
       return;
     }
 
-    STATE.fields = data.fields;
+    // Phân loại xem kết quả trả về là Multi-row hay Single-row
+    const first = data.fields[0];
+    const isMulti = first && typeof first === 'object' && !('label' in first);
+    
+    if (isMulti) {
+      STATE.isMulti = true;
+      STATE.rows = data.fields;
+      STATE.fields = [];
+    } else {
+      STATE.isMulti = false;
+      STATE.fields = data.fields;
+      STATE.rows = [];
+    }
+
     showResults();
   } catch (err) {
     showToast(`Lỗi phân tích: ${err.message}`, 'error');
@@ -379,7 +400,8 @@ Chỉ trả về JSON, không thêm bất kỳ văn bản giải thích hay kh�
 
 // ─── SEND TO SHEETS ────────────────────────────────────────
 async function sendToSheets() {
-  if (!STATE.fields.length) { showToast('Không có dữ liệu để gửi!', 'error'); return; }
+  const hasData = STATE.isMulti ? STATE.rows.length : STATE.fields.length;
+  if (!hasData) { showToast('Không có dữ liệu để gửi!', 'error'); return; }
 
   // Kiểm tra nếu người dùng nhập URL không hợp lệ
   const rawUrl = $('inp-sheet-url')?.value.trim();
@@ -391,7 +413,13 @@ async function sendToSheets() {
 
   setSending(true);
   try {
-    const payload = { fields: STATE.fields };
+    const payload = {};
+    if (STATE.isMulti) {
+      payload.rows = STATE.rows;
+    } else {
+      payload.fields = STATE.fields;
+    }
+    
     if (STATE.sheetId)  payload.sheetId  = STATE.sheetId;
     if (STATE.sheetTab) payload.sheetTab = STATE.sheetTab;
 
@@ -455,8 +483,91 @@ function showResults() {
 function renderFields() {
   const container = $('fields-container');
   container.innerHTML = '';
-  $('field-count').textContent = `${STATE.fields.length} trường`;
-  STATE.fields.forEach((f, i) => container.appendChild(createFieldCard(f, i)));
+  
+  if (STATE.isMulti) {
+    $('field-count').textContent = `${STATE.rows.length} dòng`;
+    
+    // Tạo table responsive wrapper
+    const tableWrap = document.createElement('div');
+    tableWrap.className = 'table-responsive';
+    
+    const table = document.createElement('table');
+    table.className = 'ob-data-table';
+    
+    // Lấy danh sách các cột từ dòng đầu tiên hoặc từ std_fields_to_extract
+    let cols = [];
+    const savedFieldsRaw = localStorage.getItem('std_fields_to_extract');
+    if (savedFieldsRaw) {
+      try { cols = JSON.parse(savedFieldsRaw); } catch(e) {}
+    }
+    if (!cols || cols.length === 0) {
+      cols = Object.keys(STATE.rows[0] || {});
+    }
+    
+    // Header dòng
+    const thead = document.createElement('thead');
+    const headerRow = document.createElement('tr');
+    cols.forEach(col => {
+      const th = document.createElement('th');
+      th.textContent = col;
+      headerRow.appendChild(th);
+    });
+    const thActions = document.createElement('th');
+    thActions.textContent = 'Thao tác';
+    headerRow.appendChild(thActions);
+    thead.appendChild(headerRow);
+    table.appendChild(thead);
+    
+    // Body dòng
+    const tbody = document.createElement('tbody');
+    STATE.rows.forEach((row, rowIndex) => {
+      const tr = document.createElement('tr');
+      cols.forEach(col => {
+        const td = document.createElement('td');
+        const input = document.createElement('input');
+        input.type = 'text';
+        input.value = row[col] !== undefined ? row[col] : '';
+        input.addEventListener('input', e => {
+          STATE.rows[rowIndex][col] = e.target.value;
+        });
+        td.appendChild(input);
+        tr.appendChild(td);
+      });
+      
+      const tdActions = document.createElement('td');
+      const delBtn = document.createElement('button');
+      delBtn.className = 'field-delete-btn';
+      delBtn.innerHTML = '✕';
+      delBtn.addEventListener('click', () => {
+        STATE.rows.splice(rowIndex, 1);
+        renderFields();
+      });
+      tdActions.appendChild(delBtn);
+      tr.appendChild(tdActions);
+      
+      tbody.appendChild(tr);
+    });
+    table.appendChild(tbody);
+    tableWrap.appendChild(table);
+    
+    // Nút thêm dòng mới
+    const addRowBtn = document.createElement('button');
+    addRowBtn.className = 'btn-add-row';
+    addRowBtn.innerHTML = '+ Thêm dòng dữ liệu';
+    addRowBtn.addEventListener('click', () => {
+      const newRow = {};
+      cols.forEach(col => newRow[col] = '');
+      STATE.rows.push(newRow);
+      renderFields();
+    });
+    
+    container.appendChild(tableWrap);
+    container.appendChild(addRowBtn);
+    
+  } else {
+    $('field-count').textContent = `${STATE.fields.length} trường`;
+    STATE.fields.forEach((f, i) => container.appendChild(createFieldCard(f, i)));
+  }
 }
 
 function createFieldCard(field, index) {

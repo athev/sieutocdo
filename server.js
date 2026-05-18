@@ -129,9 +129,9 @@ app.post('/api/analyze', authMiddleware, async (req, res) => {
 
 // ─── ROUTE: Ghi vào Google Sheets ─────────────────────────
 app.post('/api/sheets/write', authMiddleware, async (req, res) => {
-  const { fields, sheetId: clientSheetId, sheetTab: clientSheetTab } = req.body;
+  const { fields, rows, sheetId: clientSheetId, sheetTab: clientSheetTab } = req.body;
 
-  if (!fields || !fields.length) {
+  if ((!fields || !fields.length) && (!rows || !rows.length)) {
     return res.status(400).json({ error: 'Không có dữ liệu để ghi' });
   }
   if (!googleCreds) {
@@ -150,16 +150,10 @@ app.post('/api/sheets/write', authMiddleware, async (req, res) => {
 
   const now = new Date().toLocaleString('vi-VN', { timeZone: 'Asia/Ho_Chi_Minh' });
 
-  // Xóa đoạn tạo rowData cũ xen kẽ label/value
-  // Dữ liệu rowData sẽ được tự động map động ở bên dưới
-
-  const range = `${sheetTab}!A1`;
-
   try {
     if (!googleCreds) throw new Error('Server chưa cấu hình google-credentials.json');
 
     // 1. Lấy giờ chuẩn quốc tế để fix lỗi sai giờ trên máy tính
-    // Dùng header Date của google.com thay vì api riêng lẻ (rất ổn định)
     const timeRes = await fetch('https://google.com', { method: 'HEAD' });
     const dateStr = timeRes.headers.get('date');
     const realTimeSeconds = Math.floor(new Date(dateStr).getTime() / 1000);
@@ -198,21 +192,53 @@ app.post('/api/sheets/write', authMiddleware, async (req, res) => {
       headersChanged = true;
     }
 
-    // Map dữ liệu vào đúng cột
-    const rowData = new Array(headers.length).fill('');
-    rowData[0] = now;
-    rowData[1] = req.user.username;
+    // Biến lưu trữ tất cả các dòng dữ liệu để ghi
+    const rowsData = [];
 
-    fields.forEach(f => {
-      let idx = headers.indexOf(f.label);
-      if (idx === -1) {
-        // Nếu có trường mới chưa có trong Header -> Thêm cột mới
-        headers.push(f.label);
-        idx = headers.length - 1;
-        headersChanged = true;
-      }
-      rowData[idx] = f.value;
-    });
+    if (rows && rows.length > 0) {
+      // LUỒNG MULTI-ROW: Ghi nhiều dòng chiến dịch
+      // Cập nhật các cột tiêu đề mới từ dữ liệu động của rows
+      rows.forEach(row => {
+        Object.keys(row).forEach(key => {
+          let idx = headers.indexOf(key);
+          if (idx === -1) {
+            headers.push(key);
+            headersChanged = true;
+          }
+        });
+      });
+
+      // Tạo mảng dữ liệu cho từng dòng
+      rows.forEach(row => {
+        const rowData = new Array(headers.length).fill('');
+        rowData[0] = now;
+        rowData[1] = req.user.username;
+        
+        headers.forEach((header, idx) => {
+          if (idx > 1) { // Bỏ qua Thời gian và Người dùng
+            rowData[idx] = row[header] !== undefined ? String(row[header]) : '';
+          }
+        });
+        rowsData.push(rowData);
+      });
+
+    } else {
+      // LUỒNG SINGLE-ROW TRUYỀN THỐNG: Ghi một dòng duy nhất
+      const rowData = new Array(headers.length).fill('');
+      rowData[0] = now;
+      rowData[1] = req.user.username;
+
+      fields.forEach(f => {
+        let idx = headers.indexOf(f.label);
+        if (idx === -1) {
+          headers.push(f.label);
+          idx = headers.length - 1;
+          headersChanged = true;
+        }
+        rowData[idx] = f.value;
+      });
+      rowsData.push(rowData);
+    }
 
     // 5. Cập nhật lại Dòng 1 nếu có Header mới
     if (headersChanged) {
@@ -224,12 +250,12 @@ app.post('/api/sheets/write', authMiddleware, async (req, res) => {
       });
     }
 
-    // 6. Ghi dữ liệu Values vào dòng tiếp theo
+    // 6. Ghi dữ liệu vào dòng tiếp theo (hỗ trợ nhiều dòng một lúc)
     const appendUrl = `https://sheets.googleapis.com/v4/spreadsheets/${encodeURIComponent(sheetId)}/values/${encodeURIComponent(sheetTab + '!A2')}:append?valueInputOption=USER_ENTERED`;
     const response = await fetch(appendUrl, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${accessToken}` },
-      body: JSON.stringify({ values: [rowData] })
+      body: JSON.stringify({ values: rowsData })
     });
 
     if (!response.ok) {
@@ -246,8 +272,9 @@ app.post('/api/sheets/write', authMiddleware, async (req, res) => {
 
     const result = await response.json();
     const updatedRange = result.updates?.updatedRange || '';
-    console.log(`[sheets] ${req.user.username} → ${sheetId.slice(0, 12)}... | ${updatedRange} | ${fields.length} fields`);
+    console.log(`[sheets] ${req.user.username} → ${sheetId.slice(0, 12)}... | ${updatedRange} | ${rowsData.length} rows written`);
     res.json({ ok: true, updatedRange, rows: result.updates?.updatedRows });
+
   } catch (err) {
     console.error('[sheets raw error]', err.message);
     res.status(500).json({ error: err.message });
@@ -319,6 +346,18 @@ function parseFields(text) {
 }
 
 function normalizeFields(arr) {
+  if (arr.length === 0) return [];
+  
+  // Kiểm tra xem phần tử đầu tiên có phải là cấu trúc Multi-row (đối tượng có key tự do) hay không.
+  // Một phần tử được coi là Multi-row nếu nó là đối tượng nhưng không có thuộc tính "label" hoặc "key".
+  const first = arr[0];
+  const isMultiRow = first && typeof first === 'object' && !('label' in first) && !('key' in first);
+  
+  if (isMultiRow) {
+    // Trả về trực tiếp mảng các đối tượng dòng
+    return arr;
+  }
+  
   return arr.map(item => ({
     label: String(item.label || item.key || item.name || item.field || '').trim(),
     value: String(item.value ?? item.val ?? '').trim()

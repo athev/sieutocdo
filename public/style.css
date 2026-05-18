@@ -707,4 +707,81 @@ img { display: block; max-width: 100%; }
   pointer-events: none;
 }
 
+/* ============================================================
+   RESPONSIVE DATA TABLE UI (FOR MULTI-ROW EXTRACTION)
+   ============================================================ */
+.table-responsive {
+  width: 100%;
+  overflow-x: auto;
+  margin-top: 15px;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-lg);
+  box-shadow: var(--shadow-sm);
+  backdrop-filter: blur(10px);
+}
+.ob-data-table {
+  width: 100%;
+  border-collapse: collapse;
+  text-align: left;
+  font-size: 0.92rem;
+}
+.ob-data-table th {
+  background: rgba(255,255,255,0.03);
+  padding: 14px 16px;
+  font-weight: 600;
+  color: var(--text-secondary);
+  border-bottom: 1px solid var(--border);
+  text-transform: uppercase;
+  font-size: 0.8rem;
+  letter-spacing: 0.05em;
+  white-space: nowrap;
+}
+.ob-data-table td {
+  padding: 10px 14px;
+  border-bottom: 1px solid var(--border);
+}
+.ob-data-table tbody tr:hover {
+  background: rgba(255,255,255,0.015);
+}
+.ob-data-table td input {
+  background: rgba(0,0,0,0.2);
+  border: 1px solid transparent;
+  border-radius: var(--radius-sm);
+  color: var(--text-primary);
+  padding: 8px 12px;
+  font-size: 0.9rem;
+  width: 100%;
+  font-family: inherit;
+  transition: all var(--transition);
+}
+.ob-data-table td input:focus {
+  outline: none;
+  border-color: var(--border-focus);
+  background: rgba(99,102,241,0.06);
+  box-shadow: 0 0 0 2px var(--accent-glow);
+}
+.btn-add-row {
+  margin-top: 15px;
+  background: rgba(255,255,255,0.05);
+  border: 1px dashed var(--border);
+  color: var(--text-secondary);
+  padding: 10px 20px;
+  border-radius: var(--radius);
+  font-size: 0.88rem;
+  font-weight: 600;
+  cursor: pointer;
+  width: 100%;
+  transition: all var(--transition);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+}
+.btn-add-row:hover {
+  background: rgba(99,102,241,0.08);
+  border-color: rgba(99,102,241,0.4);
+  color: var(--accent);
+}
+
 
