@@ -267,15 +267,50 @@ function bindSheetPicker() {
 // ─── FILE HANDLING ─────────────────────────────────────────
 function handleFile(file) {
   if (!file?.type.startsWith('image/')) return;
-  STATE.imageMime = file.type || 'image/jpeg';
+  
+  // Chuyển đổi định dạng đích thành image/jpeg để tối ưu hóa dung lượng nén
+  STATE.imageMime = 'image/jpeg';
+  
   const reader = new FileReader();
   reader.onload = e => {
-    const dataUrl = e.target.result;
-    STATE.imageBase64 = dataUrl.split(',')[1];
-    $('preview-img').src = dataUrl;
-    $('drop-zone').classList.add('hidden');
-    $('preview-wrap').classList.remove('hidden');
-    $('file-input').value = '';
+    const img = new Image();
+    img.onload = () => {
+      // Giới hạn chiều dài/rộng tối đa là 1600px (đủ nét cho AI đọc, file siêu nhẹ)
+      const MAX_WIDTH = 1600;
+      const MAX_HEIGHT = 1600;
+      let width = img.width;
+      let height = img.height;
+
+      if (width > height) {
+        if (width > MAX_WIDTH) {
+          height = Math.round((height * MAX_WIDTH) / width);
+          width = MAX_WIDTH;
+        }
+      } else {
+        if (height > MAX_HEIGHT) {
+          width = Math.round((width * MAX_HEIGHT) / height);
+          height = MAX_HEIGHT;
+        }
+      }
+
+      // Tạo canvas để vẽ và thu nhỏ ảnh
+      const canvas = document.createElement('canvas');
+      canvas.width = width;
+      canvas.height = height;
+      const ctx = canvas.getContext('2d');
+      ctx.drawImage(img, 0, 0, width, height);
+
+      // Nén ảnh sang JPEG với chất lượng 80% (Dung lượng file giảm từ ~5MB về chỉ ~200-300KB!)
+      const compressedDataUrl = canvas.toDataURL('image/jpeg', 0.8);
+      STATE.imageBase64 = compressedDataUrl.split(',')[1];
+      
+      // Cập nhật giao diện preview
+      $('preview-img').src = compressedDataUrl;
+      $('drop-zone').classList.add('hidden');
+      $('preview-wrap').classList.remove('hidden');
+      $('file-input').value = '';
+    };
+    img.src = e.target.result;
   };
   reader.readAsDataURL(file);
 }
