@@ -94,32 +94,74 @@ app.post('/api/analyze', authMiddleware, async (req, res) => {
   }
 
   const prompt = customPrompt || buildDefaultPrompt();
-
-  const body = {
-    contents: [{
-      parts: [
-        { text: prompt },
-        { inline_data: { mime_type: mimeType || 'image/jpeg', data: imageBase64 } }
-      ]
-    }],
-    generationConfig: { temperature: 0.1, maxOutputTokens: 4096 }
-  };
+  const isProxyKey = GEMINI_KEY.startsWith('fe_oa_');
 
   try {
-    const apiRes = await fetch(
-      `https://generativelanguage.googleapis.com/v1beta/models/${GEMINI_MODEL}:generateContent?key=${GEMINI_KEY}`,
-      { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) }
-    );
+    let apiRes;
+    let text = '';
 
-    if (!apiRes.ok) {
-      const err = await apiRes.json().catch(() => ({}));
-      throw new Error(err?.error?.message || `Gemini HTTP ${apiRes.status}`);
+    if (isProxyKey) {
+      console.log(`[analyze] Phát hiện Proxy Key. Chuyển hướng yêu cầu qua freemodel.dev`);
+      const body = {
+        model: "gpt-4o",
+        messages: [
+          {
+            role: "user",
+            content: [
+              { type: "text", text: prompt },
+              { type: "image_url", image_url: { url: `data:${mimeType || 'image/jpeg'};base64,${imageBase64}` } }
+            ]
+          }
+        ],
+        temperature: 0.1
+      };
+
+      apiRes = await fetch(
+        'https://api.freemodel.dev/v1/chat/completions',
+        {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${GEMINI_KEY}`
+          },
+          body: JSON.stringify(body)
+        }
+      );
+
+      if (!apiRes.ok) {
+        const err = await apiRes.json().catch(() => ({}));
+        throw new Error(err?.error?.message || `Proxy HTTP ${apiRes.status}`);
+      }
+
+      const data = await apiRes.json();
+      text = data.choices?.[0]?.message?.content || '';
+
+    } else {
+      const body = {
+        contents: [{
+          parts: [
+            { text: prompt },
+            { inline_data: { mime_type: mimeType || 'image/jpeg', data: imageBase64 } }
+          ]
+        }],
+        generationConfig: { temperature: 0.1, maxOutputTokens: 4096 }
+      };
+
+      apiRes = await fetch(
+        `https://generativelanguage.googleapis.com/v1beta/models/${GEMINI_MODEL}:generateContent?key=${GEMINI_KEY}`,
+        { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) }
+      );
+
+      if (!apiRes.ok) {
+        const err = await apiRes.json().catch(() => ({}));
+        throw new Error(err?.error?.message || `Gemini HTTP ${apiRes.status}`);
+      }
+
+      const data = await apiRes.json();
+      text = data.candidates?.[0]?.content?.parts?.[0]?.text || '';
     }
 
-    const data = await apiRes.json();
-    const text = data.candidates?.[0]?.content?.parts?.[0]?.text || '';
     const fields = parseFields(text);
-
     res.json({ fields, raw: text });
   } catch (err) {
     console.error('[analyze]', err.message);
