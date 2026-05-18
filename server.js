@@ -30,7 +30,7 @@ app.use(express.static(path.join(__dirname, 'public')));
 const PORT        = process.env.PORT || 3000;
 const JWT_SECRET  = process.env.JWT_SECRET || 'changeme-secret';
 const GEMINI_KEY  = process.env.GEMINI_API_KEY;
-const GEMINI_MODEL= process.env.GEMINI_MODEL || 'gemini-2.0-flash';
+const GEMINI_MODEL= process.env.GEMINI_MODEL || 'gemini-2.5-flash';
 const SHEETS_KEY  = process.env.SHEETS_API_KEY;
 const SHEET_ID    = process.env.SHEET_ID;
 const SHEET_TAB   = process.env.SHEET_TAB || 'Sheet1';
