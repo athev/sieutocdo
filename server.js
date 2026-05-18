@@ -10,12 +10,16 @@ const jwt     = require('jsonwebtoken');
 const path    = require('path');
 const fs      = require('fs');
 
-// Đọc file credentials
+// Đọc file credentials (hoặc từ biến môi trường trên Vercel)
 let googleCreds = null;
 try {
-  googleCreds = JSON.parse(fs.readFileSync(path.join(__dirname, 'google-credentials.json'), 'utf8'));
+  if (process.env.GOOGLE_CREDENTIALS_JSON) {
+    googleCreds = JSON.parse(process.env.GOOGLE_CREDENTIALS_JSON);
+  } else {
+    googleCreds = JSON.parse(fs.readFileSync(path.join(__dirname, 'google-credentials.json'), 'utf8'));
+  }
 } catch (err) {
-  console.log('Chưa có google-credentials.json');
+  console.log('Chưa có google-credentials.json hoặc cấu hình GOOGLE_CREDENTIALS_JSON');
 }
 
 const app = express();
