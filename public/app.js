@@ -511,7 +511,8 @@ function resetToUpload() {
 
 // ─── UI HELPERS ────────────────────────────────────────────
 function setAnalyzing(on) {
-  $('analyze-icon').classList.toggle('hidden', on);
+  const icon = $('analyze-icon');
+  if (icon) icon.classList.toggle('hidden', on);
   $('analyze-spinner').classList.toggle('hidden', !on);
   $('analyze-text').textContent = on ? 'Đang phân tích...' : 'Phân tích ảnh';
   $('btn-analyze').disabled = on;
@@ -519,7 +520,8 @@ function setAnalyzing(on) {
 }
 
 function setSending(on) {
-  $('send-icon').classList.toggle('hidden', on);
+  const icon = $('send-icon');
+  if (icon) icon.classList.toggle('hidden', on);
   $('send-spinner').classList.toggle('hidden', !on);
   $('send-text').textContent = on ? 'Đang ghi...' : 'Ghi vào Google Sheets';
   $('btn-send-sheet').disabled = on;
